@@ -2,6 +2,10 @@
 
 Aplicação com interface gráfica (Tkinter) para codificação e decodificação usando os algoritmos Golomb, Elias-Gamma, Fibonacci/Zeckendorf e Huffman.
 
+## Alunos
+
+Eduardo Godoi, Murilo Schuck, Patrick Wendling e Pedro Gerhardt
+
 ## Como rodar
 
 ```bash
