@@ -15,4 +15,4 @@ source venv/bin/activate
 python main.py
 ```
 
-> No macOS, se der erro de tkinter, rode `brew install python-tk@3.14` (ajuste a versão do Python conforme necessário) e recrie o venv.
+> No macOS, se der erro de tkinter, rode `brew install python-tk@3.14` (ajuste a versão do Python conforme necessário).
