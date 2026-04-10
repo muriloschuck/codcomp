@@ -9,9 +9,6 @@ Eduardo Godoi, Murilo Schuck, Patrick Wendling e Pedro Gerhardt
 ## Como rodar
 
 ```bash
-cd ~/uni/codcomp
-python3 -m venv venv
-source venv/bin/activate
 python main.py
 ```
 
