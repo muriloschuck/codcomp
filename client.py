@@ -29,31 +29,34 @@ def parse_input(raw_input: str, codec_name: str) -> tuple[list, bool]:
     """
     Analisa a entrada do usuario e retorna valores prontos para codificacao.
 
-    Para Huffman:
-        Retorna ([raw_input], False) — a string inteira e o valor.
+    Tokenizacao (comum a todos os codecs):
+        - Se a entrada contem virgula: split por virgula, strip em cada token
+        - Se contem espaco (sem virgula): split por espaco
+        - Se nao tem nenhum: token unico (texto continuo)
 
     Para codecs baseados em inteiros (Golomb, Elias-Gamma, Fibonacci):
-        1. Tokeniza: virgula > espaco > texto continuo
-        2. Se todos os tokens sao inteiros validos -> lista de ints
-        3. Se qualquer token nao e int -> converte cada caractere de cada token para ord(c)
+        - Se todos os tokens sao inteiros validos -> lista de ints
+        - Se qualquer token nao e int -> converte cada caractere de cada token para ord(c)
+
+    Para Huffman:
+        - Retorna a lista de tokens como strings (cada token e codificado separadamente)
 
     Returns:
         (lista_de_valores, foi_convertido_ascii)
     """
-    if codec_name not in INTEGER_CODECS:
-        # Huffman: string inteira
-        return [raw_input], False
-
-    # Tokenizacao
+    # Tokenizacao (comum)
     if "," in raw_input:
         tokens = [t.strip() for t in raw_input.split(",") if t.strip()]
     elif " " in raw_input:
         tokens = raw_input.split()
     else:
-        # texto continuo, token unico
         tokens = [raw_input]
 
-    # Tenta interpretar todos como inteiros
+    # Huffman: cada token e uma string a ser codificada
+    if codec_name not in INTEGER_CODECS:
+        return tokens, False
+
+    # Codecs de inteiros: tenta interpretar todos como int
     all_int = True
     int_values = []
     for token in tokens:
