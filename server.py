@@ -61,12 +61,32 @@ def handle_decode(request: dict) -> dict:
     for cw in codewords:
         try:
             value = codec.decode(cw, **params)
-            decoded_values.append(str(value))
-            details.append({
+            detail = {
                 "codeword": cw,
                 "decoded": str(value),
                 "bits": len(cw),
-            })
+            }
+
+            # info extra para codigo de repeticao
+            if codec_name == "Repeticao":
+                ri = params.get("ri", 3)
+                grupos_com_divergencia = []
+                bits_corrigidos = []
+                for i in range(0, len(cw), ri):
+                    grupo = cw[i:i + ri]
+                    ones = grupo.count('1')
+                    bit_resultado = '1' if ones > ri // 2 else '0'
+                    bits_corrigidos.append(bit_resultado)
+                    # se nao foi unanime, houve possivel erro
+                    if ones != 0 and ones != ri:
+                        grupos_com_divergencia.append(i // ri)
+
+                detail["bits_corrigidos"] = ''.join(bits_corrigidos)
+                detail["grupos_com_divergencia"] = grupos_com_divergencia
+                detail["erro_detectado"] = len(grupos_com_divergencia) > 0
+
+            decoded_values.append(str(value))
+            details.append(detail)
         except Exception as e:
             decoded_values.append(None)
             details.append({

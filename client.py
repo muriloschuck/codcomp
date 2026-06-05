@@ -22,7 +22,7 @@ DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 65432
 
 # codecs que operam sobre inteiros (vs Huffman que opera sobre strings)
-INTEGER_CODECS = {"Golomb", "Elias-Gamma", "Fibonacci"}
+INTEGER_CODECS = {"Golomb", "Elias-Gamma", "Fibonacci", "Repeticao"}
 
 
 def parse_input(raw_input: str, codec_name: str) -> tuple[list, bool]:
@@ -218,8 +218,8 @@ class Client:
         # validacao do dominio do codec
         if codec_name in INTEGER_CODECS:
             for val in values:
-                if codec_name == "Golomb" and val < 0:
-                    print(f"  Erro: Golomb requer inteiros >= 0. Valor invalido: {val}")
+                if codec_name in ("Golomb", "Repeticao") and val < 0:
+                    print(f"  Erro: {codec_name} requer inteiros >= 0. Valor invalido: {val}")
                     return None, False
                 elif codec_name in ("Elias-Gamma", "Fibonacci") and val < 1:
                     print(f"  Erro: {codec_name} requer inteiros >= 1. Valor invalido: {val}")
@@ -240,6 +240,20 @@ class Client:
                 cw = codec.encode(val, **params)
                 codewords.append(cw)
                 print(f"  {val} -> {cw} ({len(cw)} bits)")
+
+            # info extra para codigo de repeticao
+            if codec_name == "Repeticao":
+                ri = params.get("ri", 3)
+                total_bits = sum(len(cw) for cw in codewords)
+                bits_originais = total_bits // ri
+                bits_redundantes = total_bits - bits_originais
+                print(f"\n[Redundancia]")
+                print(f"  Ri = {ri} (cada bit repetido {ri}x)")
+                print(f"  Bits originais: {bits_originais}")
+                print(f"  Bits redundantes: {bits_redundantes}")
+                print(f"  Total transmitido: {total_bits}")
+                print(f"  Taxa: 1/{ri}")
+                print(f"  Capacidade de correcao: ate {(ri - 1) // 2} erro(s) por grupo")
 
             return codewords, was_ascii
         except Exception as e:
@@ -377,6 +391,19 @@ class Client:
             else:
                 decoded_strs.append(f"ERRO({d.get('error', '?')})")
         print(f"  Decodificado: {' '.join(decoded_strs)}")
+
+        # info extra para codigo de repeticao (correcao)
+        if codec_name == "Repeticao":
+            print("\n[Verificacao/Correcao]")
+            for d in details:
+                if d.get("bits_corrigidos") is not None:
+                    print(f"  Codeword recebido: {d['codeword']}")
+                    print(f"  Bits apos votacao:  {d['bits_corrigidos']}")
+                    if d.get("erro_detectado"):
+                        grupos = d.get("grupos_com_divergencia", [])
+                        print(f"  Erro detectado: Sim (grupos com divergencia: {grupos})")
+                    else:
+                        print(f"  Erro detectado: Nao (votacao unanime)")
 
         # se houve conversao ASCII, reconverte para texto
         if was_ascii and decoded_values:

@@ -2,6 +2,7 @@ from codecs_impl.golomb import GolombCodec
 from codecs_impl.elias_gamma import EliasGammaCodec
 from codecs_impl.fibonacci import FibonacciCodec
 from codecs_impl.huffman import HuffmanCodec
+from codecs_impl.repetition import RepetitionCodec
 
 # lista de codecs disponiveis
 AVAILABLE_CODECS = [
@@ -9,6 +10,7 @@ AVAILABLE_CODECS = [
     EliasGammaCodec(),
     FibonacciCodec(),
     HuffmanCodec(),
+    RepetitionCodec(),
 ]
 
 def get_codec_by_name(name: str):
