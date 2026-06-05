@@ -60,7 +60,13 @@ def handle_decode(request: dict) -> dict:
 
     for cw in codewords:
         try:
-            value = codec.decode(cw, **params)
+            # Hamming: usa decode_with_details para obter sindrome e correcao
+            if codec_name == "Hamming":
+                hamming_info = codec.decode_with_details(cw)
+                value = hamming_info["decoded_value"]
+            else:
+                value = codec.decode(cw, **params)
+
             detail = {
                 "codeword": cw,
                 "decoded": str(value),
@@ -84,6 +90,13 @@ def handle_decode(request: dict) -> dict:
                 detail["bits_corrigidos"] = ''.join(bits_corrigidos)
                 detail["grupos_com_divergencia"] = grupos_com_divergencia
                 detail["erro_detectado"] = len(grupos_com_divergencia) > 0
+
+            # info extra para Hamming
+            if codec_name == "Hamming":
+                detail["hamming_blocks"]     = hamming_info["blocks"]
+                detail["has_any_error"]      = hamming_info["has_any_error"]
+                detail["corrected_codeword"] = hamming_info["corrected_codeword"]
+                detail["all_data_bits"]      = hamming_info["all_data_bits"]
 
             decoded_values.append(str(value))
             details.append(detail)
@@ -125,6 +138,22 @@ def handle_client(client_sock: socket.socket, client_addr: tuple):
                 decoded = response.get("decoded_values", [])
                 log(f"Recebido: codec={codec_name}, {len(codewords)} codewords")
                 log(f"  Decodificado: {decoded}")
+                # log extra para Hamming
+                if codec_name == "Hamming":
+                    for d in response.get("details", []):
+                        for j, blk in enumerate(d.get("hamming_blocks", []), 1):
+                            if blk["has_error"]:
+                                log(
+                                    f"  [Hamming] bloco {j}: recebido={blk['received']} | "
+                                    f"sindrome={blk['syndrome']} | "
+                                    f"erro na posicao {blk['error_position']} (1-indexado) | "
+                                    f"corrigido={blk['corrected_block']}"
+                                )
+                            else:
+                                log(
+                                    f"  [Hamming] bloco {j}: recebido={blk['received']} | "
+                                    f"sindrome={blk['syndrome']} | sem erro"
+                                )
 
             else:
                 response = {

@@ -22,7 +22,7 @@ DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 65432
 
 # codecs que operam sobre inteiros (vs Huffman que opera sobre strings)
-INTEGER_CODECS = {"Golomb", "Elias-Gamma", "Fibonacci", "Repeticao"}
+INTEGER_CODECS = {"Golomb", "Elias-Gamma", "Fibonacci", "Repeticao", "Hamming"}
 
 
 def parse_input(raw_input: str, codec_name: str) -> tuple[list, bool]:
@@ -218,7 +218,7 @@ class Client:
         # validacao do dominio do codec
         if codec_name in INTEGER_CODECS:
             for val in values:
-                if codec_name in ("Golomb", "Repeticao") and val < 0:
+                if codec_name in ("Golomb", "Repeticao", "Hamming") and val < 0:
                     print(f"  Erro: {codec_name} requer inteiros >= 0. Valor invalido: {val}")
                     return None, False
                 elif codec_name in ("Elias-Gamma", "Fibonacci") and val < 1:
@@ -254,6 +254,31 @@ class Client:
                 print(f"  Total transmitido: {total_bits}")
                 print(f"  Taxa: 1/{ri}")
                 print(f"  Capacidade de correcao: ate {(ri - 1) // 2} erro(s) por grupo")
+
+            # info extra para Hamming: exibe blocos com paridade detalhada
+            if codec_name == "Hamming":
+                print(f"\n[Bits Redundantes - Hamming (7,4)]")
+                total_dados = 0
+                total_paridade = 0
+                for val in values:
+                    det = codec.encode_with_details(val, **params)
+                    n_blocos = len(det["blocks"])
+                    print(f"  Valor {val} | binario={det['input_bits']} | {n_blocos} bloco(s):")
+                    for j, blk in enumerate(det["blocks"], 1):
+                        print(
+                            f"    Bloco {j}: dados={blk['data_bits']} | "
+                            f"p1={blk['p1']}  p2={blk['p2']}  p3={blk['p3']} | "
+                            f"codeword=[{blk['codeword']}]"
+                        )
+                    total_dados    += det["total_data_bits"]
+                    total_paridade += det["total_parity_bits"]
+                total_transmitido = total_dados + total_paridade
+                print(f"  ---")
+                print(f"  Bits de dados:    {total_dados}")
+                print(f"  Bits de paridade: {total_paridade}  (3 por bloco)")
+                print(f"  Total transmitido:{total_transmitido}")
+                print(f"  Taxa de codigo:   4/7 ~ {4/7:.2%}")
+                print(f"  Capacidade:       correcao de 1 erro por bloco de 7 bits")
 
             return codewords, was_ascii
         except Exception as e:
@@ -405,6 +430,31 @@ class Client:
                     else:
                         print(f"  Erro detectado: Nao (votacao unanime)")
 
+        # info extra para Hamming (verificacao e correcao por bloco)
+        if codec_name == "Hamming":
+            print("\n[Verificacao/Correcao - Hamming (7,4)]")
+            for idx_d, d in enumerate(details):
+                hamming_blocks = d.get("hamming_blocks", [])
+                has_any_error  = d.get("has_any_error", False)
+                corrected_cw   = d.get("corrected_codeword", d["codeword"])
+                n_blocos = len(hamming_blocks)
+                print(f"  Codeword #{idx_d + 1} ({n_blocos} bloco(s)):")
+                for j, blk in enumerate(hamming_blocks, 1):
+                    presenca = "Sim" if blk["has_error"] else "Nao"
+                    print(f"    Bloco {j}:")
+                    print(f"      Recebido:         {blk['received']}")
+                    print(f"      Sindrome:         {blk['syndrome']}")
+                    print(f"      Presenca de erro: {presenca}", end="")
+                    if blk["has_error"]:
+                        print(f"  (posicao {blk['error_position']}, 1-indexado)")
+                        print(f"      Codeword corrigida: {blk['corrected_block']}")
+                    else:
+                        print()
+                        print(f"      Codeword corrigida: {blk['corrected_block']}  (inalterado)")
+                    print(f"      Dados extraidos:  {blk['data_bits']}")
+                print(f"  Mensagem corrigida: {corrected_cw}")
+                print(f"  Presenca de erro:   {'Sim' if has_any_error else 'Nao'}")
+
         # se houve conversao ASCII, reconverte para texto
         if was_ascii and decoded_values:
             text_chars = []
@@ -540,6 +590,31 @@ class Client:
                 print(f"    {cw} -> {dec}")
             else:
                 print(f"    {cw} -> ERRO: {err}")
+
+        # info extra para Hamming (verificacao e correcao por bloco)
+        if codec_name == "Hamming":
+            print("\n[Verificacao/Correcao - Hamming (7,4)]")
+            for idx_d, d in enumerate(details):
+                hamming_blocks = d.get("hamming_blocks", [])
+                has_any_error  = d.get("has_any_error", False)
+                corrected_cw   = d.get("corrected_codeword", d.get("codeword", "?"))
+                n_blocos = len(hamming_blocks)
+                print(f"  Codeword #{idx_d + 1} ({n_blocos} bloco(s)):")
+                for j, blk in enumerate(hamming_blocks, 1):
+                    presenca = "Sim" if blk["has_error"] else "Nao"
+                    print(f"    Bloco {j}:")
+                    print(f"      Recebido:         {blk['received']}")
+                    print(f"      Sindrome:         {blk['syndrome']}")
+                    print(f"      Presenca de erro: {presenca}", end="")
+                    if blk["has_error"]:
+                        print(f"  (posicao {blk['error_position']}, 1-indexado)")
+                        print(f"      Codeword corrigida: {blk['corrected_block']}")
+                    else:
+                        print()
+                        print(f"      Codeword corrigida: {blk['corrected_block']}  (inalterado)")
+                    print(f"      Dados extraidos:  {blk['data_bits']}")
+                print(f"  Mensagem corrigida: {corrected_cw}")
+                print(f"  Presenca de erro:   {'Sim' if has_any_error else 'Nao'}")
 
         # se tiver erro, mostra comparacao dos codewords
         if error_positions:

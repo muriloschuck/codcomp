@@ -3,6 +3,7 @@ from codecs_impl.elias_gamma import EliasGammaCodec
 from codecs_impl.fibonacci import FibonacciCodec
 from codecs_impl.huffman import HuffmanCodec
 from codecs_impl.repetition import RepetitionCodec
+from codecs_impl.hamming import HammingCodec
 
 # lista de codecs disponiveis
 AVAILABLE_CODECS = [
@@ -11,6 +12,7 @@ AVAILABLE_CODECS = [
     FibonacciCodec(),
     HuffmanCodec(),
     RepetitionCodec(),
+    HammingCodec(),
 ]
 
 def get_codec_by_name(name: str):
@@ -20,5 +22,5 @@ def get_codec_by_name(name: str):
     return None
 
 
-def get_codec_names() -> list[str]:
+def get_codec_names():
     return [codec.name for codec in AVAILABLE_CODECS]
