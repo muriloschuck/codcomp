@@ -278,7 +278,14 @@ class Client:
                 print(f"  Bits de paridade: {total_paridade}  (3 por bloco)")
                 print(f"  Total transmitido:{total_transmitido}")
                 print(f"  Taxa de codigo:   4/7 ~ {4/7:.2%}")
-                print(f"  Capacidade:       correcao de 1 erro por bloco de 7 bits")
+
+            if codec_name == "CRC-4":
+                print(f"\n[CRC-4]")
+                for val in values:
+                    det = codec.encode_with_details(val, **params)
+                    print(f"  Bits originais: {det['data_bits']}")
+                    print(f"  CRC gerado:    {det['crc_bits']}")
+                    print(f"  Codeword:      {det['codeword']} ({det['total_bits']} bits)")
 
             return codewords, was_ascii
         except Exception as e:
@@ -590,6 +597,17 @@ class Client:
                 print(f"    {cw} -> {dec}")
             else:
                 print(f"    {cw} -> ERRO: {err}")
+
+        # info extra para CRC-4
+        if codec_name == "CRC-4":
+            print("\n[Verificacao - CRC-4]")
+            for idx_d, d in enumerate(details):
+                print(f"  Codeword #{idx_d + 1}: {d.get('codeword', '?')}")
+                if d.get('error') is not None:
+                    print(f"    Erro detectado: Sim ({d.get('error')})")
+                else:
+                    print(f"    Erro detectado: Nao")
+                    print(f"    Dados extraidos: {d.get('data_bits', '?')}")
 
         # info extra para Hamming (verificacao e correcao por bloco)
         if codec_name == "Hamming":

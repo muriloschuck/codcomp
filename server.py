@@ -64,6 +64,11 @@ def handle_decode(request: dict) -> dict:
             if codec_name == "Hamming":
                 hamming_info = codec.decode_with_details(cw)
                 value = hamming_info["decoded_value"]
+            elif codec_name == "CRC-4":
+                crc_info = codec.decode_with_details(cw)
+                if crc_info["has_error"]:
+                    raise ValueError("CRC invalido: erro detectado na transmissao.")
+                value = crc_info["decoded_value"]
             else:
                 value = codec.decode(cw, **params)
 
@@ -72,6 +77,13 @@ def handle_decode(request: dict) -> dict:
                 "decoded": str(value),
                 "bits": len(cw),
             }
+
+            # info extra para CRC-4
+            if codec_name == "CRC-4":
+                detail["data_bits"] = crc_info["data_bits"]
+                detail["crc_bits"] = crc_info["crc_bits"]
+                detail["crc_remainder"] = crc_info["crc_remainder"]
+                detail["erro_detectado"] = crc_info["has_error"]
 
             # info extra para codigo de repeticao
             if codec_name == "Repeticao":
@@ -154,6 +166,13 @@ def handle_client(client_sock: socket.socket, client_addr: tuple):
                                     f"  [Hamming] bloco {j}: recebido={blk['received']} | "
                                     f"sindrome={blk['syndrome']} | sem erro"
                                 )
+                # log extra para CRC-4
+                if codec_name == "CRC-4":
+                    for d in response.get("details", []):
+                        if d.get("erro_detectado"):
+                            log(f"  [CRC-4] codeword={d['codeword']} | erro detectado | resto={d['crc_remainder']}")
+                        else:
+                            log(f"  [CRC-4] codeword={d['codeword']} | sem erro | dados={d['data_bits']}")
 
             else:
                 response = {

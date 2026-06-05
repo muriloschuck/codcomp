@@ -4,6 +4,7 @@ from codecs_impl.fibonacci import FibonacciCodec
 from codecs_impl.huffman import HuffmanCodec
 from codecs_impl.repetition import RepetitionCodec
 from codecs_impl.hamming import HammingCodec
+from codecs_impl.crc import CRCCodec
 
 # lista de codecs disponiveis
 AVAILABLE_CODECS = [
@@ -13,6 +14,7 @@ AVAILABLE_CODECS = [
     HuffmanCodec(),
     RepetitionCodec(),
     HammingCodec(),
+    CRCCodec(),
 ]
 
 def get_codec_by_name(name: str):
