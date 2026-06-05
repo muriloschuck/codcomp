@@ -122,17 +122,20 @@ class Client:
         print("\nMetodo de codificacao:")
         for i, name in enumerate(codec_names, 1):
             print(f"  {i}. {name}")
-        print(f"  {len(codec_names) + 1}. Sair")
+        print(f"  {len(codec_names) + 1}. Decodificar codeword(s) binario(s)")
+        print(f"  {len(codec_names) + 2}. Sair")
 
         while True:
             try:
                 choice = input("\nEscolha: ").strip()
                 idx = int(choice) - 1
-                if idx == len(codec_names):
+                if idx == len(codec_names) + 1:
                     return None  # sair
+                if idx == len(codec_names):
+                    return "__binary_decode__" 
                 if 0 <= idx < len(codec_names):
                     return codec_names[idx]
-                print(f"  Opcao invalida. Escolha entre 1 e {len(codec_names) + 1}.")
+                print(f"  Opcao invalida. Escolha entre 1 e {len(codec_names) + 2}.")
             except ValueError:
                 print("  Digite um numero valido.")
             except (KeyboardInterrupt, EOFError):
@@ -400,6 +403,127 @@ class Client:
                 else:
                     print(f"  {orig} -> {dec}  (OK)")
 
+    def ask_binary_codewords(self, raw_input: str) -> tuple[list[str], str, dict] | None:
+        """
+        Processa codewords binarios fornecidos pelo usuario
+
+        Retorna (codewords, codec_name, params) ou None se cancelar
+        """
+        print("\n[Entrada de Codewords Binarios]")
+
+        # tokenizacao dos codewords, aceitamos separados por virgula ou espaco
+        if "," in raw_input:
+            codewords = [t.strip() for t in raw_input.split(",") if t.strip()]
+        elif " " in raw_input:
+            codewords = raw_input.split()
+        else:
+            codewords = [raw_input]
+
+        # valida que a entrada eh binaria
+        for cw in codewords:
+            if not all(c in '01' for c in cw):
+                print(f"  Erro: '{cw}' contem caracteres invalidos. Use apenas 0 e 1.")
+                return None
+            if not cw:
+                print("  Erro: codeword vazio detectado.")
+                return None
+
+        print(f"  {len(codewords)} codeword(s) recebido(s):")
+        for i, cw in enumerate(codewords):
+            print(f"    [{i}] {cw} ({len(cw)} bits)")
+
+        # escolha do codec
+        codec_names = get_codec_names()
+        print("\nCodec para decodificacao:")
+        for i, name in enumerate(codec_names, 1):
+            print(f"  {i}. {name}")
+
+        while True:
+            try:
+                choice = input("\nEscolha: ").strip()
+                idx = int(choice) - 1
+                if 0 <= idx < len(codec_names):
+                    codec_name = codec_names[idx]
+                    break
+                print(f"  Opcao invalida. Escolha entre 1 e {len(codec_names)}.")
+            except ValueError:
+                print("  Digite um numero valido.")
+            except (KeyboardInterrupt, EOFError):
+                return None
+
+        # parametros do codec
+        params = self.ask_params(codec_name)
+        if params is None:
+            return None
+
+        return codewords, codec_name, params
+
+    def run_binary_decode_flow(self, raw_input: str):
+        result = self.ask_binary_codewords(raw_input)
+        if result is None:
+            return
+
+        codewords, codec_name, params = result
+        original_codewords = list(codewords)
+
+        # insercao de erro
+        sent_codewords = self.ask_error(codewords)
+
+        # transmissao
+        response = self.transmit(codec_name, params, sent_codewords)
+        if response is None:
+            return
+
+        # exibe resultado
+        self.show_binary_decode_result(original_codewords, sent_codewords, response, codec_name)
+
+    def show_binary_decode_result(self, original_codewords: list[str], sent_codewords: list[str],
+                                   response: dict, codec_name: str):
+        # posicoes com erro
+        original_full = "".join(original_codewords)
+        sent_full = "".join(sent_codewords)
+        error_positions = [i for i in range(len(original_full))
+                          if original_full[i] != sent_full[i]]
+
+        print("\n[Transmissao]")
+        print(f"  Codeword original: {' '.join(original_codewords)}")
+        print(f"  Codeword enviado:  {' '.join(sent_codewords)}")
+        if error_positions:
+            print(f"  Posicoes invertidas: {error_positions}")
+        else:
+            print(f"  Erro inserido: Nenhum")
+
+        # resposta do servidor
+        status = response.get("status", "error")
+
+        print(f"\n[Resposta do Servidor] (codec: {codec_name})")
+
+        if status == "error":
+            print(f"  Erro: {response.get('message', 'desconhecido')}")
+            return
+
+        details = response.get("details", [])
+
+        print("  Decodificacao:")
+        for d in details:
+            cw = d.get("codeword", "?")
+            dec = d.get("decoded")
+            err = d.get("error")
+            if dec is not None:
+                print(f"    {cw} -> {dec}")
+            else:
+                print(f"    {cw} -> ERRO: {err}")
+
+        # se tiver erro, mostra comparacao dos codewords
+        if error_positions:
+            print("\n[Comparacao de Codewords]")
+            for orig, sent in zip(original_codewords, sent_codewords):
+                if orig != sent:
+                    diffs = [i for i in range(len(orig)) if i < len(sent) and orig[i] != sent[i]]
+                    print(f"  {orig} -> {sent}  (bits alterados: {diffs})")
+                else:
+                    print(f"  {orig} -> {sent}  (OK)")
+
     # ─────────────────────────────────────────────
     # Loop principal
     # ─────────────────────────────────────────────
@@ -423,6 +547,11 @@ class Client:
             codec_name = self.ask_codec()
             if codec_name is None:
                 break
+
+            # modo decodificacao de codewords binarios
+            if codec_name == "__binary_decode__":
+                self.run_binary_decode_flow(raw_input)
+                continue
 
             # 3. Parametros
             params = self.ask_params(codec_name)
