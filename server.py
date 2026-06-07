@@ -66,8 +66,6 @@ def handle_decode(request: dict) -> dict:
                 value = hamming_info["decoded_value"]
             elif codec_name == "CRC-4":
                 crc_info = codec.decode_with_details(cw)
-                if crc_info["has_error"]:
-                    raise ValueError("CRC invalido: erro detectado na transmissao.")
                 value = crc_info["decoded_value"]
             else:
                 value = codec.decode(cw, **params)

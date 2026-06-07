@@ -74,6 +74,20 @@ class CRCCodec(BaseCodec):
         crc_bits = self._binary_division(bits + "0" * self._DEGREE)
         return bits + crc_bits
 
+    def _bits_to_text(self, bits: str) -> str | None:
+        if len(bits) % 8 != 0:
+            return None
+
+        chars = []
+        for i in range(0, len(bits), 8):
+            byte = int(bits[i:i + 8], 2)
+            if byte in (9, 10, 13) or 32 <= byte <= 126:
+                chars.append(chr(byte))
+            else:
+                return None
+
+        return "".join(chars)
+
     def decode_with_details(self, codeword: str) -> dict:
         if not codeword or not all(c in "01" for c in codeword):
             raise ValueError("Codeword deve conter apenas 0 e 1.")
@@ -85,7 +99,14 @@ class CRCCodec(BaseCodec):
         remainder = self._binary_division(codeword)
         has_error = any(bit == "1" for bit in remainder)
         data_bits = codeword[:-self._DEGREE]
-        decoded_value = int(data_bits, 2) if data_bits else 0
+
+        decoded_value = None
+        if data_bits:
+            decoded_value = self._bits_to_text(data_bits)
+            if decoded_value is None:
+                decoded_value = str(int(data_bits, 2))
+        else:
+            decoded_value = "0"
 
         return {
             "codeword": codeword,
